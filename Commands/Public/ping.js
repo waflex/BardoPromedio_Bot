@@ -15,4 +15,3 @@ module.exports = {
     interaction.reply({ content: "Pong!!", ephemeral: true });
   },
 };
-
