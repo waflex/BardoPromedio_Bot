@@ -1,3 +1,6 @@
+require("dotenv").config();
+require("./database/mongoose");
+
 const {
   Client,
   GatewayIntentBits,
@@ -17,6 +20,7 @@ const client = new Client({
 });
 
 const { loadEvents } = require("./Handlers/eventHandler");
+const RssService = require("./Services/RssService");
 
 client.config = require("./config.json");
 client.events = new Collection();
@@ -24,8 +28,15 @@ client.commands = new Collection();
 
 loadEvents(client);
 
+// After client is ready
+client.once("ready", () => {
+  console.log("Bot esta listo");
+  const rssService = new RssService(client);
+  rssService.start();
+});
+
 // Autentica el bot con el token de tu aplicación de Discord
-client.login(client.config.token);
+client.login(process.env.DISCORD_TOKEN);
 
 const prefix = `-`;
 
@@ -42,6 +53,8 @@ client.on(`messageCreate`, (message) => {
     message.channel.send(`Hola Mundo`);
   }
 });
+
+
 
 client.on(Events.ChannelCreate, async (channel) => {
   channel.guild

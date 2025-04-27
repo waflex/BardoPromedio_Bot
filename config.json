@@ -1,3 +1,18 @@
 {
-    "token":"ODU3MzQ4NTcxMjQ2NjI0Nzk4.Gi0DU1.sI40euwAWsftiBWiZcUucely3O_7p7_o5hKn-Q"
+    "prefix": "-",
+    "embedColors": {
+        "success": "#00ff00",
+        "error": "#ff0000",
+        "info": "#0099ff"
+    },
+    "logChannels": {
+        "moderation": "1135277458132828280",
+        "welcome": "channel_id_here",
+        "audit": "channel_id_here"
+    },
+    "defaultSettings": {
+        "welcomeMessage": "Welcome to the server, {user}!",
+        "autoRole": "member",
+        "maxWarnings": 3
+    }
 }
