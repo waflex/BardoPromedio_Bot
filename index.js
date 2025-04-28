@@ -12,6 +12,8 @@ const {
 } = require("discord.js");
 const { Guilds, GuildMembers, GuildMessages } = GatewayIntentBits;
 const { User, Message, GuildMember, ThreadMember } = Partials;
+const GuildConfig = require("./Models/GuildConfig"); // Importar el modelo de configuración
+const TwitchService = require("./Services/TwitchService");
 
 const client = new Client({
   //intents: [Guilds, GuildMembers, GuildMessages],
@@ -30,9 +32,15 @@ loadEvents(client);
 
 // After client is ready
 client.once("ready", () => {
-  console.log("Bot esta listo");
+  console.log(`Bot logged in as ${client.user.tag}`);
   const rssService = new RssService(client);
   rssService.start();
+  console.log("RSS Service started");
+
+  // Inicializar TwitchService y adjuntarlo al cliente
+  client.twitchService = new TwitchService(client);
+  client.twitchService.start();
+  console.log("TwitchService initialized and attached to client");
 });
 
 // Autentica el bot con el token de tu aplicación de Discord
@@ -54,9 +62,25 @@ client.on(`messageCreate`, (message) => {
   }
 });
 
-
+// Helper function to get log channel ID from DB
+async function getLogChannelId(guildId) {
+  try {
+    const config = await GuildConfig.findOne({ guildId });
+    return config ? config.logChannelId : null;
+  } catch (error) {
+    console.error(`Error fetching log channel ID for guild ${guildId}:`, error);
+    return null;
+  }
+}
 
 client.on(Events.ChannelCreate, async (channel) => {
+  // Fetch log channel ID from DB
+  const logChannelId = await getLogChannelId(channel.guild.id);
+  if (!logChannelId) {
+    console.log(`Log channel not configured for guild ${channel.guild.id}`);
+    return; // No log channel configured
+  }
+
   channel.guild
     .fetchAuditLogs({
       type: AuditLogEvent.ChannelCreate,
@@ -75,8 +99,14 @@ client.on(Events.ChannelCreate, async (channel) => {
       if (type == 5) type = `Announcememnt`;
       if (type == 4) type = `Categoria`;
 
-      const channelID = `1135277458132828280`;
-      const Channel = await channel.guild.channels.cache.get(channelID);
+      // Use the fetched log channel ID
+      const LogChannel = await channel.guild.channels.cache.get(logChannelId);
+      if (!LogChannel) {
+        console.error(
+          `Log channel ${logChannelId} not found in guild ${channel.guild.id}`
+        );
+        return;
+      }
 
       const embed = new EmbedBuilder()
         .setTitle(`Canal Creado`)
@@ -86,11 +116,21 @@ client.on(Events.ChannelCreate, async (channel) => {
         .addFields({ name: `Creado por`, value: `${executor.tag}` })
         .setTimestamp();
 
-      Channel.send({ embeds: [embed] });
-    });
+      LogChannel.send({ embeds: [embed] });
+    })
+    .catch((err) =>
+      console.error("Error fetching audit logs for ChannelCreate:", err)
+    );
 });
 
 client.on(Events.ChannelDelete, async (channel) => {
+  // Fetch log channel ID from DB
+  const logChannelId = await getLogChannelId(channel.guild.id);
+  if (!logChannelId) {
+    console.log(`Log channel not configured for guild ${channel.guild.id}`);
+    return; // No log channel configured
+  }
+
   channel.guild
     .fetchAuditLogs({
       type: AuditLogEvent.ChannelDelete,
@@ -109,8 +149,14 @@ client.on(Events.ChannelDelete, async (channel) => {
       if (type == 5) type = `Announcememnt`;
       if (type == 4) type = `Categoria`;
 
-      const channelID = `1135277458132828280`;
-      const Channel = await channel.guild.channels.cache.get(channelID);
+      // Use the fetched log channel ID
+      const LogChannel = await channel.guild.channels.cache.get(logChannelId);
+      if (!LogChannel) {
+        console.error(
+          `Log channel ${logChannelId} not found in guild ${channel.guild.id}`
+        );
+        return;
+      }
 
       const embed = new EmbedBuilder()
         .setTitle(`Canal Eliminado`)
@@ -120,48 +166,83 @@ client.on(Events.ChannelDelete, async (channel) => {
         .addFields({ name: `Eliminado por`, value: `${executor.tag}` })
         .setTimestamp();
 
-      Channel.send({ embeds: [embed] });
-    });
+      LogChannel.send({ embeds: [embed] });
+    })
+    .catch((err) =>
+      console.error("Error fetching audit logs for ChannelDelete:", err)
+    );
 });
 
-client.on(Events.GuildBanAdd, async (member) => {
-  member.guild
+client.on(Events.GuildBanAdd, async (ban) => {
+  // Changed parameter name from member to ban for clarity
+  // Fetch log channel ID from DB
+  const logChannelId = await getLogChannelId(ban.guild.id);
+  if (!logChannelId) {
+    console.log(`Log channel not configured for guild ${ban.guild.id}`);
+    return; // No log channel configured
+  }
+
+  ban.guild
     .fetchAuditLogs({
       type: AuditLogEvent.GuildBanAdd,
     })
     .then(async (audit) => {
-      const { executor } = audit.entries.first();
+      const { executor, reason } = audit.entries.first();
 
-      const name = member.user.username;
-      const id = member.user.id;
+      const name = ban.user.username;
+      const id = ban.user.id;
 
-      const channelID = `1135277458132828280`;
-      const Channel = await member.guild.channels.cache.get(channelID);
+      // Use the fetched log channel ID
+      const LogChannel = await ban.guild.channels.cache.get(logChannelId);
+      if (!LogChannel) {
+        console.error(
+          `Log channel ${logChannelId} not found in guild ${ban.guild.id}`
+        );
+        return;
+      }
 
       const embed = new EmbedBuilder()
         .setTitle(`Usuario baneado`)
         .addFields({ name: `Nombre del usuario`, value: `${name}` })
         .addFields({ name: `ID del usuario`, value: `${id}` })
         .addFields({ name: `Baneado por`, value: `${executor.tag}` })
+        .addFields({ name: `Razón`, value: reason || "No especificada" })
         .setTimestamp();
 
-      Channel.send({ embeds: [embed] });
-    });
+      LogChannel.send({ embeds: [embed] });
+    })
+    .catch((err) =>
+      console.error("Error fetching audit logs for GuildBanAdd:", err)
+    );
 });
 
-client.on(Events.GuildBanRemove, async (member) => {
-  member.guild
+client.on(Events.GuildBanRemove, async (ban) => {
+  // Changed parameter name from member to ban for clarity
+  // Fetch log channel ID from DB
+  const logChannelId = await getLogChannelId(ban.guild.id);
+  if (!logChannelId) {
+    console.log(`Log channel not configured for guild ${ban.guild.id}`);
+    return; // No log channel configured
+  }
+
+  ban.guild
     .fetchAuditLogs({
       type: AuditLogEvent.GuildBanRemove,
     })
     .then(async (audit) => {
       const { executor } = audit.entries.first();
 
-      const name = member.user.username;
-      const id = member.user.id;
+      const name = ban.user.username;
+      const id = ban.user.id;
 
-      const channelID = `1135277458132828280`;
-      const Channel = await member.guild.channels.cache.get(channelID);
+      // Use the fetched log channel ID
+      const LogChannel = await ban.guild.channels.cache.get(logChannelId);
+      if (!LogChannel) {
+        console.error(
+          `Log channel ${logChannelId} not found in guild ${ban.guild.id}`
+        );
+        return;
+      }
 
       const embed = new EmbedBuilder()
         .setTitle(`Usuario Desbaneado`)
@@ -170,58 +251,134 @@ client.on(Events.GuildBanRemove, async (member) => {
         .addFields({ name: `Desbaneado por`, value: `${executor.tag}` })
         .setTimestamp();
 
-      Channel.send({ embeds: [embed] });
-    });
+      LogChannel.send({ embeds: [embed] });
+    })
+    .catch((err) =>
+      console.error("Error fetching audit logs for GuildBanRemove:", err)
+    );
 });
 
 client.on(Events.MessageDelete, async (message) => {
-  message.guild
-    .fetchAuditLogs({
+  // Ignore partial messages or messages without guild
+  if (message.partial || !message.guild) return;
+
+  // Fetch log channel ID from DB
+  const logChannelId = await getLogChannelId(message.guild.id);
+  if (!logChannelId) {
+    // No console log here to avoid spam for servers without log channel
+    return; // No log channel configured
+  }
+
+  // Try to fetch audit log entry, might not exist if deleted by user themselves or bot
+  let executor = message.author; // Assume self-deletion initially
+  try {
+    const fetchedLogs = await message.guild.fetchAuditLogs({
+      limit: 1,
       type: AuditLogEvent.MessageDelete,
-    })
-    .then(async (audit) => {
-      const autor = message.author;
-
-      const msg = message.content;
-
-      if (!msg) return;
-
-      const channelID = `1135277458132828280`;
-      const Channel = await message.guild.channels.cache.get(channelID);
-
-      const embed = new EmbedBuilder()
-        .setTitle(`Mensaje eliminado`)
-        .addFields({ name: `Contenido del mensaje`, value: `${msg}` })
-        .addFields({ name: `Canal del mensaje`, value: `${message.channel}` })
-        .addFields({ name: `Autor del mensaje`, value: `${autor}` })
-        .setTimestamp();
-
-      Channel.send({ embeds: [embed] });
     });
+    const deletionLog = fetchedLogs.entries.first();
+
+    if (deletionLog) {
+      const { executor: logExecutor, target } = deletionLog;
+      // Check if the log entry corresponds to the deleted message
+      // Check target ID and if the log entry is recent enough (within 5 seconds)
+      if (
+        target.id === message.author.id &&
+        Date.now() - deletionLog.createdTimestamp < 5000
+      ) {
+        executor = logExecutor;
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching audit logs for MessageDelete:", err);
+    // Proceed without executor info if audit log fetch fails
+  }
+
+  const autor = message.author;
+  const msg = message.content;
+
+  if (!msg && message.embeds.length === 0 && message.attachments.size === 0)
+    return; // Ignore empty messages
+
+  // Use the fetched log channel ID
+  const LogChannel = await message.guild.channels.cache.get(logChannelId);
+  if (!LogChannel) {
+    console.error(
+      `Log channel ${logChannelId} not found in guild ${message.guild.id}`
+    );
+    return;
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(`Mensaje eliminado`)
+    .addFields({
+      name: `Contenido del mensaje`,
+      value: msg || "*Mensaje vacío o solo contenía embeds/adjuntos*",
+    })
+    .addFields({ name: `Canal del mensaje`, value: `${message.channel}` })
+    .addFields({
+      name: `Autor del mensaje`,
+      value: `${autor.tag} (${autor.id})`,
+    })
+    .addFields({
+      name: `Eliminado por`,
+      value: `${executor.tag} (${executor.id})`,
+    })
+    .setTimestamp();
+
+  // Add attachments if any
+  if (message.attachments.size > 0) {
+    embed.addFields({
+      name: "Adjuntos",
+      value: message.attachments.map((a) => `[${a.name}](${a.url})`).join("\n"),
+    });
+  }
+
+  LogChannel.send({ embeds: [embed] });
 });
 
 client.on(Events.MessageUpdate, async (message, newMessage) => {
-  message.guild
-    .fetchAuditLogs({
-      type: AuditLogEvent.MessageUpdate,
+  // Ignore partial messages or messages without guild/author
+  if (message.partial || !message.guild || !message.author) return;
+  // Ignore bot messages
+  if (message.author.bot) return;
+  // Ignore if content hasn't changed
+  if (message.content === newMessage.content) return;
+
+  // Fetch log channel ID from DB
+  const logChannelId = await getLogChannelId(message.guild.id);
+  if (!logChannelId) {
+    // No console log here to avoid spam for servers without log channel
+    return; // No log channel configured
+  }
+
+  // No need to fetch audit logs for message edits, the author is known
+  const autor = message.author;
+  const oldMsg = message.content;
+  const newMsg = newMessage.content;
+
+  if (!oldMsg && !newMsg) return; // Ignore if both are empty (e.g., embed update only)
+
+  // Use the fetched log channel ID
+  const LogChannel = await message.guild.channels.cache.get(logChannelId);
+  if (!LogChannel) {
+    console.error(
+      `Log channel ${logChannelId} not found in guild ${message.guild.id}`
+    );
+    return;
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(`Mensaje editado`)
+    .setURL(newMessage.url) // Add link to the message
+    .addFields({ name: `Mensaje inicial`, value: oldMsg || "*Mensaje vacío*" })
+    .addFields({ name: `Mensaje editado`, value: newMsg || "*Mensaje vacío*" })
+    .addFields({
+      name: `Autor del mensaje`,
+      value: `${autor.tag} (${autor.id})`,
     })
-    .then(async (audit) => {
-      const autor = message.author;
+    .addFields({ name: `Canal`, value: `${message.channel}` })
+    .setTimestamp();
 
-      const msg = message.content;
-
-      if (!msg) return;
-
-      const channelID = `1135277458132828280`;
-      const Channel = await message.guild.channels.cache.get(channelID);
-
-      const embed = new EmbedBuilder()
-        .setTitle(`Mensaje editado`)
-        .addFields({ name: `Mensaje inicial`, value: `${msg}` })
-        .addFields({ name: `Mensaje editado`, value: `${newMessage}` })
-        .addFields({ name: `Autor del mensaje`, value: `${autor}` })
-        .setTimestamp();
-
-      Channel.send({ embeds: [embed] });
-    });
+  LogChannel.send({ embeds: [embed] });
 });

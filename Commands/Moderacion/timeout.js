@@ -43,29 +43,29 @@ module.exports = {
     if (user.id === interaction.user.id)
       return interaction.reply({
         content: `No puedes mutearte a ti mismo`,
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
     if (user.id === client.user.id)
       return interaction.reply({
         content: `Hey eso es grosero, a mi no eh?!`,
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
     if (
       member.roles.highest.position >= interaction.member.roles.highest.position
     )
       return interaction.reply({
         content: `no puedes mutear a alguien con un rol superior o igual al tuyo`,
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
     if (!member.kickable)
       return interaction.reply({
         content: `No puedo mutear a alguien con un rol superior al mio`,
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
     if (tiempo > 10000)
       return interaction.reply({
         content: `el tiempo no puede supera los 10.000 minutos`,
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
 
     const embed = new EmbedBuilder()

@@ -58,7 +58,7 @@ module.exports = {
         if (i.user.id !== interaction.user.id) {
           return await i.reply({
             content: `Solo la persona ejecutando el comando puede usar este medio`,
-            ephemeral: true,
+            flags: [MessageFlags.Ephemeral],
           });
         }
         await i.update({ embeds: [embed], components: [button] });
@@ -67,7 +67,7 @@ module.exports = {
         if (i.user.id !== interaction.user.id) {
           return await i.reply({
             content: `Solo la persona ejecutando el comando puede usar este medio`,
-            ephemeral: true,
+            flags: [MessageFlags.Ephemeral],
           });
         }
         await i.update({ embeds: [embed2], components: [button] });
@@ -76,7 +76,7 @@ module.exports = {
         if (i.user.id !== interaction.user.id) {
           return await i.reply({
             content: `Solo la persona ejecutando el comando puede usar este medio`,
-            ephemeral: true,
+            flags: [MessageFlags.Ephemeral],
           });
         }
         await i.update({ embeds: [embed3], components: [button] });

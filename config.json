@@ -5,11 +5,6 @@
         "error": "#ff0000",
         "info": "#0099ff"
     },
-    "logChannels": {
-        "moderation": "1135277458132828280",
-        "welcome": "channel_id_here",
-        "audit": "channel_id_here"
-    },
     "defaultSettings": {
         "welcomeMessage": "Welcome to the server, {user}!",
         "autoRole": "member",

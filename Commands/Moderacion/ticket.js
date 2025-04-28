@@ -35,7 +35,7 @@ module.exports = {
     await interaction.channel.send({ embeds: [embed], components: [button] });
     await interaction.reply({
       content: `El mensaje ha sido enviado correctamente`,
-      ephemeral: true,
+      flags: [MessageFlags.Ephemeral],
     });
 
     const collector = interaction.channel.createMessageComponentCollector();
