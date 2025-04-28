@@ -52,7 +52,7 @@ module.exports = {
     } catch (error) {
       console.error('Error al actualizar el contador de besos:', error);
       // Enviar respuesta sin el contador si hay error en la BD
-      await interaction.reply({ embeds: [embed], content: 'Hubo un error al contar los besos, ¡pero el beso se dio!', flags: [MessageFlags.Ephemeral] });
+      await interaction.reply({ embeds: [embed], content: 'Hubo un error al contar los besos, ¡pero el beso se dio!', ephemeral: true });
     }
   },
 };

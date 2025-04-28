@@ -36,24 +36,24 @@ module.exports = {
     if (user.id === interaction.user.id)
       return interaction.reply({
         content: `No puedes Banerate a ti mismo`,
-        flags: [MessageFlags.Ephemeral],
+        ephemeral: true,
       });
     if (user.id === client.user.id)
       return interaction.reply({
         content: `Siquiera se puede?`,
-        flags: [MessageFlags.Ephemeral],
+        ephemeral: true,
       });
     if (
       member.roles.highest.position >= interaction.member.roles.highest.position
     )
       return interaction.reply({
         content: `no puedes Banear a alguien con un rol superior o igual al tuyo`,
-        flags: [MessageFlags.Ephemeral],
+        ephemeral: true,
       });
     if (!member.kickable)
       return interaction.reply({
         content: `No puedo Banear a alguien con un rol superior al mio`,
-        flags: [MessageFlags.Ephemeral],
+        ephemeral: true,
       });
 
     const embed = new EmbedBuilder()

@@ -87,7 +87,7 @@ module.exports = {
             initializeTwitchApi();
         } catch (error) {
             console.error("Failed to initialize Twitch API:", error);
-            return interaction.reply({ content: 'Error: Failed to initialize Twitch integration. Please check bot configuration.', flags: [MessageFlags.Ephemeral] });
+            return interaction.reply({ content: 'Error: Failed to initialize Twitch integration. Please check bot configuration.', ephemeral: true });
         }
         const subcommand = interaction.options.getSubcommand();
         const guildId = interaction.guildId;
@@ -96,7 +96,7 @@ module.exports = {
         console.log("guildId:", guildId);
 
         if (!clientId || !clientSecret) {
-             return interaction.reply({ content: 'Error: La integración con Twitch no está configurada correctamente por el administrador del bot.', flags: [MessageFlags.Ephemeral] });
+             return interaction.reply({ content: 'Error: La integración con Twitch no está configurada correctamente por el administrador del bot.', ephemeral: true });
         }
 
         switch (subcommand) {
@@ -107,13 +107,13 @@ module.exports = {
                     // Verificar si el streamer ya está añadido
                     const existingStreamer = await Streamer.findOne({ guildId, twitchUsername: twitchUsernameToAdd });
                     if (existingStreamer) {
-                        return interaction.reply({ content: `El streamer '${twitchUsernameToAdd}' ya está siendo seguido en <#${existingStreamer.channelId}>.`, flags: [MessageFlags.Ephemeral] });
+                        return interaction.reply({ content: `El streamer '${twitchUsernameToAdd}' ya está siendo seguido en <#${existingStreamer.channelId}>.`, ephemeral: true });
                     }
 
                     // Obtener datos del usuario de Twitch para validar y obtener ID
                     const twitchUser = await getTwitchUser(twitchUsernameToAdd);
                     if (!twitchUser) {
-                        return interaction.reply({ content: `No se pudo encontrar al usuario de Twitch '${twitchUsernameToAdd}'. Verifica el nombre de usuario.`, flags: [MessageFlags.Ephemeral] });
+                        return interaction.reply({ content: `No se pudo encontrar al usuario de Twitch '${twitchUsernameToAdd}'. Verifica el nombre de usuario.`, ephemeral: true });
                     }
 
                     // Guardar en la base de datos
@@ -126,13 +126,13 @@ module.exports = {
 
                     await interaction.reply({
                         content: `¡Perfecto! Se notificará en ${channel} cuando **${twitchUser.displayName}** (${twitchUser.name}) inicie stream.`,
-                        flags: [MessageFlags.Ephemeral]
+                        ephemeral: true
                     });
                 } catch (error) {
                     console.error('Error adding streamer:', error);
                     await interaction.reply({
                         content: 'Ocurrió un error al añadir el streamer. Por favor, inténtalo de nuevo.',
-                        flags: [MessageFlags.Ephemeral]
+                        ephemeral: true
                     });
                 }
                 break;
@@ -147,15 +147,15 @@ module.exports = {
                     });
 
                     if (result) {
-                        await interaction.reply({ content: `El streamer '${twitchUsernameToRemove}' ha sido eliminado de las notificaciones.`, flags: [MessageFlags.Ephemeral] });
+                        await interaction.reply({ content: `El streamer '${twitchUsernameToRemove}' ha sido eliminado de las notificaciones.`, ephemeral: true });
                     } else {
-                        await interaction.reply({ content: `El streamer '${twitchUsernameToRemove}' no se encontró en la lista.`, flags: [MessageFlags.Ephemeral] });
+                        await interaction.reply({ content: `El streamer '${twitchUsernameToRemove}' no se encontró en la lista.`, ephemeral: true });
                     }
                 } catch (error) {
                     console.error('Error removing streamer:', error);
                     await interaction.reply({
                         content: 'Ocurrió un error al eliminar el streamer.',
-                        flags: [MessageFlags.Ephemeral]
+                        ephemeral: true
                     });
                 }
                 break;
@@ -164,7 +164,7 @@ module.exports = {
                 try {
                     const streamers = await Streamer.find({ guildId: guildId });
                     if (streamers.length === 0) {
-                        return interaction.reply({ content: 'No hay streamers configurados para notificaciones en este servidor.', flags: [MessageFlags.Ephemeral] });
+                        return interaction.reply({ content: 'No hay streamers configurados para notificaciones en este servidor.', ephemeral: true });
                     }
 
                     const embed = new EmbedBuilder()
@@ -179,12 +179,12 @@ module.exports = {
                     embed.setDescription(description || 'Ninguno');
 
 
-                    await interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
+                    await interaction.reply({ embeds: [embed], ephemeral: true });
                 } catch (error) {
                     console.error('Error listing streamers:', error);
                     await interaction.reply({
                         content: 'Ocurrió un error al listar los streamers.',
-                        flags: [MessageFlags.Ephemeral]
+                        ephemeral: true
                     });
                 }
                 break;

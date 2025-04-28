@@ -58,12 +58,12 @@ module.exports = {
 
                     await interaction.reply({ 
                         content: `Successfully added RSS feed for ${feed.title} to ${channel}`,
-                        flags: [MessageFlags.Ephemeral] 
+                        ephemeral: true 
                     });
                 } catch (error) {
                     await interaction.reply({ 
                         content: 'Failed to add RSS feed. Please check the URL.',
-                        flags: [MessageFlags.Ephemeral] 
+                        ephemeral: true 
                     });
                 }
                 break;
@@ -73,7 +73,7 @@ module.exports = {
                 if (feeds.length === 0) {
                     await interaction.reply({ 
                         content: 'No RSS feeds configured for this server.',
-                        flags: [MessageFlags.Ephemeral] 
+                        ephemeral: true 
                     });
                     return;
                 }
@@ -84,7 +84,7 @@ module.exports = {
 
                 await interaction.reply({ 
                     content: `Configured RSS feeds:\n${feedList}`,
-                    flags: [MessageFlags.Ephemeral] 
+                    ephemeral: true 
                 });
                 break;
 
@@ -98,12 +98,12 @@ module.exports = {
                 if (removed) {
                     await interaction.reply({ 
                         content: 'RSS feed removed successfully.',
-                        flags: [MessageFlags.Ephemeral] 
+                        ephemeral: true 
                     });
                 } else {
                     await interaction.reply({ 
                         content: 'RSS feed not found.',
-                        flags: [MessageFlags.Ephemeral] 
+                        ephemeral: true 
                     });
                 }
                 break;
@@ -116,13 +116,13 @@ module.exports = {
                     if (feeds.length === 0) {
                         await interaction.reply({
                             content: 'No RSS feeds configured for this server.',
-                            flags: [MessageFlags.Ephemeral]
+                            ephemeral: true
                         });
                         return;
                     }
 
                     // Defer reply as we might need more time to fetch all feeds
-                    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+                    await interaction.deferReply({ ephemeral: true });
 
                     const embeds = [];
 
@@ -169,7 +169,7 @@ module.exports = {
                     console.error('RSS Check Error:', error);
                     await interaction.reply({
                         content: 'An error occurred while checking RSS feeds.',
-                        flags: [MessageFlags.Ephemeral]
+                        ephemeral: true
                     });
                 }
                 break;

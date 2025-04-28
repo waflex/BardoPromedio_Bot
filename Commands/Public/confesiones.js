@@ -43,7 +43,7 @@ const {
   
       interaction.reply({
         content: `Publicaste exitosamente tu confesión.`,
-        flags: [MessageFlags.Ephemeral],
+        ephemeral: true,
       });
     },
   };
