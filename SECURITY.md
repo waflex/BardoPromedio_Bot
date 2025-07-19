@@ -19,11 +19,11 @@ The following versions of the bot are actively supported with security updates:
 If you discover a security vulnerability in this project, please follow these steps:
 
 1. **Do not disclose publicly**: Avoid sharing the vulnerability in public forums or repositories.
-2. **Contact the Maintainer**: Send an email to `security@bardopromedio.com` with the following details:
+2. **Contact the Maintainer**: Send an email to `jonathan.rojas.asc@gmail.com` with the following details:
    - A detailed description of the vulnerability.
    - Steps to reproduce the issue.
    - Any potential impact or exploit scenarios.
-3. **Response Time**: We aim to respond to security reports within 48 hours and provide a resolution within 7 days.
+3. **Response Time**: I aim to respond to security reports within 48 hours and provide a resolution within 7 days.
 
 ---
 

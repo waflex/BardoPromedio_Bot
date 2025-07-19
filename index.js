@@ -46,7 +46,7 @@ client.once("ready", () => {
 // Autentica el bot con el token de tu aplicación de Discord
 client.login(process.env.DISCORD_TOKEN);
 
-const prefix = `-`;
+const prefix = client.config.prefix || "-"; // Cambia el prefijo según tu configuración
 
 client.on(`messageCreate`, (message) => {
   if (!message.content.startsWith(prefix) || message.author.bot) return;
