@@ -14,7 +14,6 @@ module.exports = {
     .setDescription(
       "Genera un ticket para comunicarse con el staff en caso de problemas."
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .addStringOption((option) =>
       option
         .setName("razon")
