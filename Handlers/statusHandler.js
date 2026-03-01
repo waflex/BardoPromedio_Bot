@@ -1,10 +1,38 @@
-const { EmbedBuilder, PermissionsBitField } = require("discord.js");
+const { EmbedBuilder } = require("discord.js");
 const { getAllServiceStatuses } = require("../Services/serverStatus");
+const fs = require("fs");
+const path = require("path");
 
 const STATUS_CHANNEL_ID = process.env.STATUS_CHANNEL_ID || "";
 const UPDATE_INTERVAL = parseInt(process.env.STATUS_UPDATE_INTERVAL) || 60_000;
 
-let statusMessageId = null;
+// ─── Persistencia del ID del mensaje ─────────────────────────────────────────
+// Guarda el ID en un archivo junto al bot para que sobreviva reinicios
+const ID_FILE = path.join(__dirname, "..", "status_message_id.json");
+
+function loadMessageId() {
+  try {
+    if (fs.existsSync(ID_FILE)) {
+      const data = JSON.parse(fs.readFileSync(ID_FILE, "utf8"));
+      return data.messageId || null;
+    }
+  } catch (_) {}
+  return null;
+}
+
+function saveMessageId(id) {
+  try {
+    fs.writeFileSync(ID_FILE, JSON.stringify({ messageId: id }), "utf8");
+  } catch (err) {
+    console.error("[ServerStatus] No se pudo guardar el ID del mensaje:", err.message);
+  }
+}
+
+let statusMessageId = loadMessageId();
+
+if (statusMessageId) {
+  console.log(`[ServerStatus] ID de mensaje previo cargado: ${statusMessageId}`);
+}
 
 // ─── Formato de jugadores ─────────────────────────────────────────────────────
 function formatPlayers(players, maxPlayers) {
@@ -32,7 +60,6 @@ async function buildEmbed() {
 
   for (const svc of services) {
     let statusLines;
-
     if (svc.active && svc.restarted) {
       statusLines = [
         `🔄 **Reiniciado recientemente**`,
@@ -84,16 +111,25 @@ async function postOrUpdateStatus(client) {
   await clearChannel(channel);
   const embed = await buildEmbed();
 
+  // Intentar editar el mensaje existente
   if (statusMessageId) {
     const existing = await channel.messages.fetch(statusMessageId).catch(() => null);
     if (existing) {
       await existing.edit({ embeds: [embed] });
-      return;
+      return; // ✅ Editado, no crear uno nuevo
+    } else {
+      // El mensaje fue borrado manualmente, limpiar el ID guardado
+      console.log("[ServerStatus] Mensaje anterior no encontrado, creando uno nuevo...");
+      statusMessageId = null;
+      saveMessageId(null);
     }
   }
 
+  // Crear mensaje nuevo y guardar su ID
   const newMsg = await channel.send({ embeds: [embed] });
   statusMessageId = newMsg.id;
+  saveMessageId(newMsg.id);
+  console.log(`[ServerStatus] Nuevo mensaje creado y guardado: ${newMsg.id}`);
 }
 
 // ─── Iniciar monitor ──────────────────────────────────────────────────────────
