@@ -1,0 +1,4 @@
+Error checking streamer mrwaflex: TypeError: Cannot read properties of undefined (reading 'toString')
+Aug 11 01:03:23 white-shark-09645 node[288191]:     at HelixStream.getThumbnailUrl (/root/bardo-promedio/node_modules/@twurple/api/lib/endpoints/stream/HelixStream.js:117:39)
+Aug 11 01:03:23 white-shark-09645 node[288191]:     at TwitchService.checkStreamers (/root/bardo-promedio/Services/TwitchService.js:67:24)
+Aug 11 01:03:23 white-shark-09645 node[288191]:     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
