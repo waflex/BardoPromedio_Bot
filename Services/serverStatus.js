@@ -49,7 +49,7 @@ const FOUNDRY_PORT = parseInt(process.env.FOUNDRY_PORT) || 30000;
 const previousStates = {};
 
 // ═════════════════════════════════════════════════════════════════════════════
-// MINECRAFT — RCON (protocolo TCP)
+// MINECRAFT — RCON (protocolo TCP) prueba push
 // ═════════════════════════════════════════════════════════════════════════════
 function buildRconPacket(id, type, body) {
   const bodyBuf = Buffer.from(body + "\x00", "utf8");
