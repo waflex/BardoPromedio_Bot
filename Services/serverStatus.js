@@ -65,8 +65,14 @@ function buildRconPacket(id, type, body) {
 
 function getMinecraftPlayers() {
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => { socket.destroy(); resolve(null); }, 5000);
-    const socket = net.createConnection({ host: MINECRAFT_RCON_HOST, port: MINECRAFT_RCON_PORT });
+    const timeout = setTimeout(() => {
+      socket.destroy();
+      resolve(null);
+    }, 5000);
+    const socket = net.createConnection({
+      host: MINECRAFT_RCON_HOST,
+      port: MINECRAFT_RCON_PORT,
+    });
 
     socket.on("connect", () => {
       socket.write(buildRconPacket(1, 3, MINECRAFT_RCON_PASS));
@@ -85,21 +91,33 @@ function getMinecraftPlayers() {
         buffer = buffer.slice(length + 4);
 
         if (!authed) {
-          if (packetId === -1) { clearTimeout(timeout); socket.destroy(); return resolve(null); }
+          if (packetId === -1) {
+            clearTimeout(timeout);
+            socket.destroy();
+            return resolve(null);
+          }
           authed = true;
           socket.write(buildRconPacket(2, 2, "list"));
         } else {
           clearTimeout(timeout);
           socket.destroy();
           // "There are X of a max of Y players online"
-          const match = body.match(/There are (\d+) of a max(?: of)? (\d+)/i)
-                     || body.match(/Hay (\d+) de un m[aá]ximo de (\d+)/i);
-          resolve(match ? { current: parseInt(match[1]), max: parseInt(match[2]) } : null);
+          const match =
+            body.match(/There are (\d+) of a max(?: of)? (\d+)/i) ||
+            body.match(/Hay (\d+) de un m[aá]ximo de (\d+)/i);
+          resolve(
+            match
+              ? { current: parseInt(match[1]), max: parseInt(match[2]) }
+              : null,
+          );
         }
       }
     });
 
-    socket.on("error", () => { clearTimeout(timeout); resolve(null); });
+    socket.on("error", () => {
+      clearTimeout(timeout);
+      resolve(null);
+    });
   });
 }
 
@@ -109,14 +127,16 @@ function getMinecraftPlayers() {
 function getZomboidPlayers() {
   return new Promise((resolve) => {
     const socket = dgram.createSocket("udp4");
-    const timeout = setTimeout(() => { socket.close(); resolve(null); }, 5000);
+    const timeout = setTimeout(() => {
+      socket.close();
+      resolve(null);
+    }, 5000);
 
     // Valve A2S_INFO packet
     const request = Buffer.from([
-      0xff, 0xff, 0xff, 0xff, 0x54,
-      0x53, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x20, 0x45,
-      0x6e, 0x67, 0x69, 0x6e, 0x65, 0x20, 0x51, 0x75,
-      0x65, 0x72, 0x79, 0x00,
+      0xff, 0xff, 0xff, 0xff, 0x54, 0x53, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x20,
+      0x45, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79,
+      0x00,
     ]);
 
     socket.on("message", (msg) => {
@@ -133,11 +153,22 @@ function getZomboidPlayers() {
         }
         offset += 2; // app id (short)
         resolve({ current: msg[offset], max: msg[offset + 1] });
-      } catch (_) { resolve(null); }
+      } catch (_) {
+        resolve(null);
+      }
     });
 
-    socket.on("error", () => { clearTimeout(timeout); resolve(null); });
-    socket.send(request, 0, request.length, ZOMBOID_QUERY_PORT, ZOMBOID_QUERY_HOST);
+    socket.on("error", () => {
+      clearTimeout(timeout);
+      resolve(null);
+    });
+    socket.send(
+      request,
+      0,
+      request.length,
+      ZOMBOID_QUERY_PORT,
+      ZOMBOID_QUERY_HOST,
+    );
   });
 }
 
@@ -147,7 +178,13 @@ function getZomboidPlayers() {
 function getFoundryPlayers() {
   return new Promise((resolve) => {
     const req = http.request(
-      { hostname: FOUNDRY_HOST, port: FOUNDRY_PORT, path: "/api/status", method: "GET", timeout: 5000 },
+      {
+        hostname: FOUNDRY_HOST,
+        port: FOUNDRY_PORT,
+        path: "/api/status",
+        method: "GET",
+        timeout: 5000,
+      },
       (res) => {
         let data = "";
         res.on("data", (chunk) => (data += chunk));
@@ -156,15 +193,24 @@ function getFoundryPlayers() {
             const json = JSON.parse(data);
             // Foundry devuelve: { active, version, world, users }
             // "users" es el array de usuarios conectados
-            const current = Array.isArray(json.users) ? json.users.length : (json.players ?? null);
+            if (!json.active) return resolve(null);
+            const current = typeof json.users === "number" ? json.users : null;
             if (current === null) return resolve(null);
-            resolve({ current, max: SERVICES.find(s => s.id === "foundry").maxPlayers });
-          } catch (_) { resolve(null); }
+            resolve({
+              current,
+              max: SERVICES.find((s) => s.id === "foundry").maxPlayers,
+            });
+          } catch (_) {
+            resolve(null);
+          }
         });
-      }
+      },
     );
     req.on("error", () => resolve(null));
-    req.on("timeout", () => { req.destroy(); resolve(null); });
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(null);
+    });
     req.end();
   });
 }
@@ -180,7 +226,7 @@ async function checkService(svc) {
     if (active) {
       try {
         const { stdout: t } = await execAsync(
-          `systemctl show ${svc.systemd} --property=ActiveEnterTimestamp --value`
+          `systemctl show ${svc.systemd} --property=ActiveEnterTimestamp --value`,
         );
         const parsed = new Date(t.trim());
         if (!isNaN(parsed.getTime())) startedAt = parsed;
@@ -222,11 +268,16 @@ async function getAllServiceStatuses() {
     SERVICES.map(async (svc) => {
       const state = await checkService(svc);
       const restarted = wasRestarted(svc.id, state);
-      previousStates[svc.id] = { active: state.active, startedAt: state.startedAt };
+      previousStates[svc.id] = {
+        active: state.active,
+        startedAt: state.startedAt,
+      };
 
       let players = null;
       if (state.active) {
-        try { players = await svc.getPlayers(); } catch (_) {}
+        try {
+          players = await svc.getPlayers();
+        } catch (_) {}
       }
 
       return {
@@ -237,7 +288,7 @@ async function getAllServiceStatuses() {
         restarted,
         players, // { current, max } o null
       };
-    })
+    }),
   );
   return results;
 }
