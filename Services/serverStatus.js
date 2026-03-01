@@ -21,7 +21,7 @@ const SERVICES = [
     name: "Project Zomboid",
     emoji: "🧟",
     systemd: "zomboid",
-    maxPlayers: 24,
+    maxPlayers: 32,
     getPlayers: () => getZomboidPlayers(),
   },
   {
@@ -29,7 +29,7 @@ const SERVICES = [
     name: "Foundry VTT",
     emoji: "🎲",
     systemd: "foundry",
-    maxPlayers: 10,
+    maxPlayers: 7,
     getPlayers: () => getFoundryPlayers(),
   },
 ];
