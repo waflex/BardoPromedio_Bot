@@ -14,7 +14,6 @@ const { Guilds, GuildMembers, GuildMessages } = GatewayIntentBits;
 const { User, Message, GuildMember, ThreadMember } = Partials;
 const GuildConfig = require("./Models/GuildConfig"); // Importar el modelo de configuración
 const TwitchService = require("./Services/TwitchService");
-const { startStatusMonitor } = require("./Handlers/statusHandler");
 
 const client = new Client({
   //intents: [Guilds, GuildMembers, GuildMessages],
@@ -42,10 +41,6 @@ client.once("ready", () => {
   client.twitchService = new TwitchService(client);
   client.twitchService.start();
   console.log("TwitchService initialized and attached to client");
-
-  //Monitor de Servicios
-  startStatusMonitor(client);
-  console.log("Server Status Monitor started");
 });
 
 // Autentica el bot con el token de tu aplicación de Discord

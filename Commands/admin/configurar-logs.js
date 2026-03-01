@@ -5,7 +5,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('configurar-logs')
         .setDescription('Configura el canal para los registros de moderación.')
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageGuild)
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)
         .addChannelOption(option =>
             option.setName('canal')
                 .setDescription('El canal donde se enviarán los logs.')
@@ -16,7 +16,7 @@ module.exports = {
             return interaction.reply({ content: 'Este comando solo puede usarse en un servidor.', ephemeral: true });
         }
 
-        if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return interaction.reply({ content: 'No tienes permisos para usar este comando.', ephemeral: true });
         }
 

@@ -77,7 +77,6 @@ node index.js
 BardoPromedio_Bot/
 ├── Commands/
 │   ├── Moderacion/
-│   ├── Streamers/
 │   └── Public/
 ├── Events/
 │   ├── Client/
