@@ -92,9 +92,6 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
         const guildId = interaction.guildId;
 
-        console.log("subcommand:", subcommand);
-        console.log("guildId:", guildId);
-
         if (!clientId || !clientSecret) {
              return interaction.reply({ content: 'Error: La integración con Twitch no está configurada correctamente por el administrador del bot.', ephemeral: true });
         }

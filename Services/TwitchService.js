@@ -83,12 +83,8 @@ class TwitchService {
         } else if (wasLive && !isNowLive) {
           // Streamer went offline
           streamer.isLive = false;
-          await streamer.save();
-          console.log(
-            `Streamer ${streamer.twitchUsername} ha terminado su stream.`
-          );
+          await streamer.save();          
         }
-    console.log(`Streamer ${streamer.twitchUsername} está ${isNowLive ? "en vivo" : "offline"}.`);
       } catch (error) {
         console.error(
           `Error checking streamer ${streamer.twitchUsername}:`,

@@ -1,3 +1,4 @@
+require('module-alias/register');
 require("dotenv").config();
 require("./database/mongoose");
 
@@ -14,7 +15,6 @@ const { Guilds, GuildMembers, GuildMessages } = GatewayIntentBits;
 const { User, Message, GuildMember, ThreadMember } = Partials;
 const GuildConfig = require("./Models/GuildConfig"); // Importar el modelo de configuración
 const TwitchService = require("./Services/TwitchService");
-const { startStatusMonitor } = require("./Handlers/statusHandler");
 
 const client = new Client({
   //intents: [Guilds, GuildMembers, GuildMessages],
@@ -22,7 +22,12 @@ const client = new Client({
   partials: [User, Message, GuildMember, ThreadMember],
 });
 
+
+//handlers
+const { startStatusMonitor } = require("./Handlers/statusHandler");
 const { loadEvents } = require("./Handlers/eventHandler");
+require("./Handlers/MusicHandler")(client);
+
 const RssService = require("./Services/RssService");
 
 client.config = require("./config.json");

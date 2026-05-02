@@ -1,73 +1,181 @@
 const { SlashCommandBuilder } = require("discord.js");
 const {
-  joinVoiceChannel,
-  createAudioPlayer,
-  createAudioResource,
-  AudioPlayerStatus,
+    joinVoiceChannel,
+    createAudioPlayer,
+    createAudioResource,
+    AudioPlayerStatus,
+    VoiceConnectionStatus,
+    entersState,
+    StreamType,
 } = require("@discordjs/voice");
-const play = require("play-dl");
+const { spawn } = require("child_process");
+const path = require("path");
+const os = require("os");
+const fs = require("fs");
+const MusicSession = require("../../Models/MusicSession");
+const MusicHistory = require("../../Models/MusicHistory");
+const ffmpegPath = require("ffmpeg-static");
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName("play")
-    .setDescription("Reproduce una canción desde YouTube o Spotify.")
-    .addStringOption((option) =>
-      option
-        .setName("cancion")
-        .setDescription("El nombre o URL de la canción que quieres reproducir.")
-        .setRequired(true)
-    ),
+    data: new SlashCommandBuilder()
+        .setName("play")
+        .setDescription("Reproduce o encola una canción desde YouTube.")
+        .addStringOption((option) =>
+            option
+                .setName("cancion")
+                .setDescription("Nombre o URL de la canción.")
+                .setRequired(true)
+        ),
 
-  async execute(interaction) {
-    // 1. Comprobar si el usuario está en un canal de voz
-    const voiceChannel = interaction.member.voice.channel;
-    if (!voiceChannel) {
-      return interaction.reply({
-        content: "¡Debes estar en un canal de voz para que pueda unirme!",
-        flags: 64,
-      });
-    }
+    async execute(interaction) {
+        console.log("[/play] Inicio - query:", interaction.options.getString("cancion"));
 
-    await interaction.deferReply(); // Defer antes de cualquier await largo
+        const voiceChannel = interaction.member.voice.channel;
+        if (!voiceChannel) {
+            return interaction.reply({
+                content: "¡Debes estar en un canal de voz para que pueda unirme!",
+                flags: 64,
+            });
+        }
 
-    try {
-      // 2. Obtener la canción y buscar la información
-      const query = interaction.options.getString("cancion").trim();
-      const videoInfo = await play.search(query, { limit: 1 });
-      if (videoInfo.length === 0) {
-        return await interaction.editReply({
-          content: "No se encontró ninguna canción con ese nombre o enlace.",
-        });
-      }
+        await interaction.deferReply();
 
-      const connection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: interaction.guild.id,
-        adapterCreator: interaction.guild.voiceAdapterCreator,
-      });
-      const video = videoInfo[0];
-      console.log("video url:", video.url);
+        const guildId = interaction.guild.id;
+        const { activePlayers, playNext, searchAndStream } = interaction.client.music;
 
-      const stream = await play.stream(video.url);
+        try {
+            const query = interaction.options.getString("cancion").trim();
+            console.log("[/play] Buscando:", query);
 
-      console.log("el stream es:", stream);
+            const session = await MusicSession.getOrCreate(guildId);
 
-      const player = createAudioPlayer();
-      const resource = createAudioResource(stream.stream, {
-        inputType: stream.type,
-      });
+            // Buscar info de la canción
+            await interaction.editReply({ content: "🔍 Buscando canción..." });
+            console.log("[/play] Llamando searchAndStream...");
+            const result = await searchAndStream(query);
+            console.log("[/play] searchAndStream result:", result);
+            const { title, url, duration } = result;
 
-      player.play(resource);
-      connection.subscribe(player);
+            const song = {
+                title,
+                url,
+                duration,
+                requestedBy: interaction.user.id,
+                requestedByTag: interaction.user.tag,
+            };
 
-      await interaction.editReply({
-        content: `▶️ Ahora reproduciendo: **${video.title}** (${video.durationRaw})`,
-      });
-    } catch (error) {
-      console.error(error);
-      await interaction.editReply({
-        content: "Hubo un error al intentar reproducir la canción.",
-      });
-    }
-  },
+            // Si ya hay música activa → encolar
+            if (session.isPlaying && activePlayers.has(guildId)) {
+                console.log("[/play] Encolando, isPlaying:", session.isPlaying, "activePlayers has guildId:", activePlayers.has(guildId));
+                await session.addToQueue(song);
+                return await interaction.editReply({
+                    content: `🎵 **${title}** agregada a la cola en la posición #${session.queue.length}.`,
+                });
+            }
+
+            // Estado desincronizado → limpiar
+            if (session.isPlaying && !activePlayers.has(guildId)) {
+                console.log("[/play] Limpiando cola desincronizada");
+                await session.clearQueue();
+            }
+
+            // Crear conexión de voz
+            console.log("[/play] Creando conexión de voz...");
+            const connection = joinVoiceChannel({
+                channelId: voiceChannel.id,
+                guildId,
+                adapterCreator: interaction.guild.voiceAdapterCreator,
+                selfDeaf: true,
+            });
+
+            console.log("[/play] Creando player...");
+            const player = createAudioPlayer();
+
+            player.on(AudioPlayerStatus.Idle, () => {
+                console.log("[/play] Song ended, playing next...");
+                playNext(guildId, interaction.channel)
+            });
+            
+            player.on(AudioPlayerStatus.Playing, () => {
+                console.log("[/play] Audio is now playing!");
+                interaction.editReply({
+                    content: `▶️ Ahora reproduciendo: **${title}** (${duration})`
+                }).catch(() => {});
+            });
+            
+            player.on("error", (err) => {
+                console.error(`[Music] Player error:`, err.message);
+            });
+
+            connection.on("stateChange", (oldState, newState) => {
+                console.log("[/play] Voice state:", newState.status);
+                if (newState.status === VoiceConnectionStatus.Disconnected) {
+                    activePlayers.delete(guildId);
+                    MusicSession.getOrCreate(guildId).then(s => s.clearQueue()).catch(() => {});
+                }
+            });
+
+            activePlayers.set(guildId, { player, connection });
+
+            // Reproducir directamente
+            session.currentSong = song;
+            session.isPlaying = true;
+            await session.save();
+            MusicHistory.record(guildId, song).catch(console.error);
+
+            // Obtener URL directa
+            console.log("[/play] Obteniendo URL directa...");
+            const { getDirectUrl } = interaction.client.music;
+            const directUrl = await getDirectUrl(url);
+            console.log("[/play] URL obtained, downloading...");
+            
+            // Download to temp file
+            const tempFile = path.join(os.tmpdir(), `music_${Date.now()}.mp3`);
+            
+            const ytdlp = spawn("./yt-dlp.exe", [
+                "-x", 
+                "-f", "bestaudio",
+                "--audio-format", "mp3",
+                "-o", tempFile,
+                directUrl
+            ], { stdio: "ignore" });
+            
+            await new Promise((resolve, reject) => {
+                ytdlp.on("close", resolve);
+                ytdlp.on("error", reject);
+            });
+            
+            console.log("[/play] Downloaded, creating resource...");
+            const stream = fs.createReadStream(tempFile);
+            const resource = createAudioResource(stream, { 
+                inputType: StreamType.Arbitrary,
+                inlineVolume: true 
+            });
+
+            console.log("[/play] Playing...");
+            player.play(resource);
+            connection.subscribe(player);
+
+            await interaction.editReply({
+                content: `▶️ Ahora reproduciendo: **${title}** (${duration})`,
+            });
+            console.error("[/play] ERROR:", error.message);
+            console.error("[/play] Stack:", error.stack);
+
+            try {
+                const s = await MusicSession.getOrCreate(guildId);
+                if (!activePlayers.has(guildId)) await s.clearQueue();
+            } catch (e) { console.error("[/play] Error limpiando cola:", e.message); }
+
+            await interaction.editReply({
+                content: "❌ Hubo un error al intentar reproducir la canción.",
+            });
+        }catch (error) {
+                console.error("[/play] Error:", error.message);
+                console.error("[/play] Stack:", error.stack);
+                await interaction.editReply({
+                    content: "❌ Hubo un error al intentar reproducir la canción.",
+                });
+            }
+    },
 };
