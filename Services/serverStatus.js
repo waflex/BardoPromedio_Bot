@@ -32,6 +32,14 @@ const SERVICES = [
     maxPlayers: 7,
     getPlayers: () => getFoundryPlayers(),
   },
+    {
+    id: "forest",
+    name: "The Forest",
+    emoji: "🌲",
+    systemd: "forest",
+    maxPlayers: 6,
+    getPlayers: () => getForestPlayers(),
+  },
 ];
 
 // ─── CREDENCIALES — configura estas en tu .env ────────────────────────────────
@@ -44,6 +52,10 @@ const ZOMBOID_QUERY_PORT = parseInt(process.env.ZOMBOID_QUERY_PORT) || 16262;
 
 const FOUNDRY_HOST = process.env.FOUNDRY_HOST || "127.0.0.1";
 const FOUNDRY_PORT = parseInt(process.env.FOUNDRY_PORT) || 30000;
+
+// Agregar junto a las otras variables de entorno:
+const FOREST_QUERY_HOST = process.env.FOREST_QUERY_HOST || "127.0.0.1";
+const FOREST_QUERY_PORT = parseInt(process.env.FOREST_QUERY_PORT) || 27016;
 
 // ─── Estado previo para detectar reinicios ───────────────────────────────────
 const previousStates = {};
@@ -258,6 +270,50 @@ function formatUptime(startedAt) {
   if (h > 0) parts.push(`${h}h`);
   parts.push(`${m}m`);
   return parts.join(" ");
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// THE FOREST — UDP Query (similar a Zomboid pero con diferente formato de respuesta)
+// ═════════════════════════════════════════════════════════════════════════════
+// Agregar la función (copia exacta de getZomboidPlayers pero con las vars de Forest):
+function getForestPlayers() {
+  return new Promise((resolve) => {
+    const socket = dgram.createSocket("udp4");
+    const timeout = setTimeout(() => {
+      socket.close();
+      resolve(null);
+    }, 5000);
+
+    const request = Buffer.from([
+      0xff, 0xff, 0xff, 0xff, 0x54, 0x53, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x20,
+      0x45, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x20, 0x51, 0x75, 0x65, 0x72, 0x79,
+      0x00,
+    ]);
+
+    socket.on("message", (msg) => {
+      clearTimeout(timeout);
+      socket.close();
+      try {
+        if (msg[4] !== 0x49) return resolve(null);
+        let offset = 6;
+        for (let i = 0; i < 4; i++) {
+          while (offset < msg.length && msg[offset] !== 0x00) offset++;
+          offset++;
+        }
+        offset += 2;
+        resolve({ current: msg[offset], max: msg[offset + 1] });
+      } catch (_) {
+        resolve(null);
+      }
+    });
+
+    socket.on("error", () => {
+      clearTimeout(timeout);
+      resolve(null);
+    });
+
+    socket.send(request, 0, request.length, FOREST_QUERY_PORT, FOREST_QUERY_HOST);
+  });
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
